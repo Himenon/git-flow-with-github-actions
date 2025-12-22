@@ -19,4 +19,4 @@ jobs:
           NUMBER: ${{ github.event.pull_request.number }}
           BODY: >
             PRをオープンしていただきありがとうございます!
-            レビューまでしばらくお待ちください。
+            セルフレビューをしておきましょう。

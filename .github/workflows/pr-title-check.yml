@@ -1,0 +1,54 @@
+name: Check / PR Title Prefix
+
+on:
+  pull_request:
+    types: [opened, edited, reopened]
+
+jobs:
+  check-pr-title:
+    runs-on: ubuntu-slim
+    if: github.event.pull_request.base.ref == 'main'
+    permissions:
+      pull-requests: write
+    
+    steps:
+      - name: Check PR title prefix
+        id: check
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          VALID_PREFIXES="feat|chore|docs|fix|style|perf|test|refactor"
+          
+          if echo "$TITLE" | grep -qE "^($VALID_PREFIXES):"; then
+            echo "valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "valid=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Comment on PR if invalid
+        if: steps.check.outputs.valid == 'false'
+        run: |
+          gh pr comment "$NUMBER" --body "$BODY"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          BODY: |
+            ⚠️ **PR Titleに適切なprefixが付与されていません**
+            
+            以下のいずれかのprefixを追加してください：
+            - `feat:` - 新機能
+            - `fix:` - バグ修正
+            - `docs:` - ドキュメント変更
+            - `style:` - コードスタイル変更（機能に影響しない）
+            - `refactor:` - リファクタリング
+            - `perf:` - パフォーマンス改善
+            - `test:` - テスト追加・修正
+            - `chore:` - ビルドプロセスやツールの変更
+            
+            例: `feat: ユーザー認証機能を追加`
+      
+      - name: Fail if invalid
+        if: steps.check.outputs.valid == 'false'
+        run: |
+          echo "PR title does not have a valid prefix"
+          exit 1
