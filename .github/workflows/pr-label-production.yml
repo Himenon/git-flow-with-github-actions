@@ -12,7 +12,7 @@ jobs:
     
     steps:
       - name: Add production label if base is main
-        if: github.event.pull_request.base.ref == 'main'
+        if: github.event.pull_request.base.ref == 'main' && !contains(github.event.pull_request.labels.*.name, 'production')
         run: gh pr edit "$NUMBER" --add-label "production"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
