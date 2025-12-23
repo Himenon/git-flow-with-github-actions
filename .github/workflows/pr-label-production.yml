@@ -2,6 +2,8 @@ name: Label / Add リリース前 Label
 
 on:
   pull_request:
+    branches:
+      - main
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 jobs:
@@ -9,34 +11,7 @@ jobs:
     runs-on: ubuntu-slim
     permissions:
       pull-requests: write
-    if: github.event.pull_request.base.ref == 'main'
-    
-    steps:
-      - name: Add リリース前 label and remove 開発中 if ready for review
-        if: github.event.pull_request.draft == false
-        run: |
-          gh pr edit "$NUMBER" --add-label "リリース前"
-          gh pr edit "$NUMBER" --remove-label "開発中" || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          NUMBER: ${{ github.event.pull_request.number }}
-      
-      - name: Add 開発中 label and remove リリース前 if draft
-        if: github.event.pull_request.draft == true
-        run: |
-          gh pr edit "$NUMBER" --add-label "開発中"
-          gh pr edit "$NUMBER" --remove-label "リリース前" || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          NUMBER: ${{ github.event.pull_request.number }}
-  
-  manage-develop-branch-labels:
-    runs-on: ubuntu-slim
-    permissions:
-      pull-requests: write
-    if: startsWith(github.event.pull_request.base.ref, 'develop/')
+    if: startsWith(github.event.pull_request.head.ref, 'develop/')
     
     steps:
       - name: Add リリース前 label and remove 開発中 if ready for review
