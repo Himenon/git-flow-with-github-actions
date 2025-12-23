@@ -7,6 +7,10 @@ on:
         description: 'コミットを追加するブランチ名'
         required: true
         type: string
+      checkout_from_branch:
+        description: 'チェックアウト元のブランチ名'
+        required: true
+        type: string
 
 jobs:
   empty-commit-creation:
@@ -22,11 +26,13 @@ jobs:
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: ${{ github.event.repository.name }}
       
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch_name }}
+          repository: ${{ github.repository }}
+          ref: ${{ inputs.checkout_from_branch }}
           token: ${{ steps.generate-token.outputs.token }}
           fetch-depth: 0
       
@@ -37,6 +43,7 @@ jobs:
       
       - name: Create empty commit
         run: |
+          git checkout -B ${{ inputs.branch_name }}
           git commit --allow-empty -m "Empty commit on ${{ inputs.branch_name }}"
           git push origin ${{ inputs.branch_name }}
         env:
