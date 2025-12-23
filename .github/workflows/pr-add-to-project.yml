@@ -25,4 +25,4 @@ jobs:
         with:
           project-url: https://github.com/users/Himenon/projects/2
           # github-token: ${{ steps.create-github-app-token.outputs.token }}
-          github-token: ${{ secrets.TEST_PAT }}
+          github-token: ${{ secrets.GH_PROJECT_TOKEN }}
