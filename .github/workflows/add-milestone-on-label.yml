@@ -20,4 +20,9 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          gh api repos/$REPO/issues/$PR_NUMBER -X PATCH -f milestone=1
+          if gh api repos/$REPO/issues/$PR_NUMBER -X PATCH -f milestone=1 > /dev/null 2>&1; then
+            echo "✓ Milestone added to PR #$PR_NUMBER"
+          else
+            echo "✗ Failed to add milestone to PR #$PR_NUMBER"
+            exit 1
+          fi
