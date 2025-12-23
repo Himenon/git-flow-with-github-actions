@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  initial-comment:
+  initial-pr-comment:
     name: PR作成時のコメント
     if: |
       github.event_name == 'pull_request' &&
@@ -30,12 +30,12 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          gh pr comment $PR_NUMBER --repo $REPO --body "## レビュー依頼の前に確認してください
+          gh pr comment $PR_NUMBER --repo $REPO --body "♪♪ レビュー依頼の前に確認してください
 
           * セルフレビューをしておきましょう。
-          * PRでスコープ外のことをしないように気をつけましょう。"
+          * PRでスコープ外のことをしないように気をつけましょう。" 2>/dev/null
 
-  delete-approved-comment-on-rerequest:
+  approved-comment-deletion-on-rerequest:
     name: レビュー再要求時に承認コメント削除
     if: |
       github.event_name == 'pull_request' &&
@@ -54,19 +54,19 @@ jobs:
           COMMENT_MARKER: "<!-- all-approved-notification -->"
         run: |
           # 承認通知コメントを検索して削除
-          COMMENTS=$(gh api repos/$REPO/issues/$PR_NUMBER/comments --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$COMMENT_MARKER\"))) | .id")
+          COMMENTS=$(gh api repos/$REPO/issues/$PR_NUMBER/comments --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$COMMENT_MARKER\"))) | .id" 2>/dev/null)
           
           if [ -n "$COMMENTS" ]; then
             echo "$COMMENTS" | while read -r COMMENT_ID; do
-              echo "Deleting comment: $COMMENT_ID"
-              gh api -X DELETE repos/$REPO/issues/comments/$COMMENT_ID
+              echo "コメント削除中: $COMMENT_ID"
+              gh api -X DELETE repos/$REPO/issues/comments/$COMMENT_ID > /dev/null 2>&1
             done
-            echo "Deleted approval notification comments due to review re-request"
+            echo "レビュー再要求により承認通知コメントを削除しました"
           else
-            echo "No approval notification comments to delete"
+            echo "削除する承認通知コメントはありません"
           fi
 
-  check-all-approved:
+  all-approved-notification:
     name: 全Approve後の通知コメント
     if: |
       github.event_name == 'pull_request_review' &&
@@ -88,23 +88,23 @@ jobs:
             レビュー完了後に問題がなければ**Squash Merge**を実施してください。
         run: |
           # レビュー状態を取得
-          REVIEWS=$(gh api repos/$REPO/pulls/$PR_NUMBER/reviews --jq 'group_by(.user.login) | map({user: .[0].user.login, state: .[-1].state})')
+          REVIEWS=$(gh api repos/$REPO/pulls/$PR_NUMBER/reviews --jq 'group_by(.user.login) | map({user: .[0].user.login, state: .[-1].state})' 2>/dev/null)
           
           # すべてのレビューがAPPROVEDか確認
           PENDING_REVIEWS=$(echo "$REVIEWS" | jq '[.[] | select(.state != "APPROVED")] | length')
           
           # 以前のボットコメントを検索して削除
-          COMMENTS=$(gh api repos/$REPO/issues/$PR_NUMBER/comments --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$COMMENT_MARKER\"))) | .id")
+          COMMENTS=$(gh api repos/$REPO/issues/$PR_NUMBER/comments --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$COMMENT_MARKER\"))) | .id" 2>/dev/null)
           
           if [ -n "$COMMENTS" ]; then
             echo "$COMMENTS" | while read -r COMMENT_ID; do
-              echo "Deleting comment: $COMMENT_ID"
-              gh api -X DELETE repos/$REPO/issues/comments/$COMMENT_ID
+              echo "コメント削除中: $COMMENT_ID"
+              gh api -X DELETE repos/$REPO/issues/comments/$COMMENT_ID > /dev/null 2>&1
             done
           fi
           
           # すべて承認されている場合のみ新しいコメントを投稿
           if [ "$PENDING_REVIEWS" -eq 0 ]; then
             gh pr comment $PR_NUMBER --repo $REPO --body "${COMMENT_MARKER}
-          @${LAST_REVIEWER} ${MESSAGE}"
+          @${LAST_REVIEWER} ${MESSAGE}" 2>/dev/null
           fi

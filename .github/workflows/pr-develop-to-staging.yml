@@ -1,4 +1,4 @@
-# develop/* -> release/staging のPull Request管理
+# develop/* -> release/staging のPR管理
 # このワークフローは develop/* ブランチから release/staging ブランチへのPRに対してのみ実行されます
 # - Ready for review時に「Stagingリリース」ラベルを付与
 # - Draft時に「Stagingリリース」ラベルを削除
@@ -11,12 +11,16 @@ on:
     branches:
       - release/staging
 
+env:
+  # ラベル定義
+  LABEL_STAGING_RELEASE: Stagingリリース
+
 concurrency:
   group: pr-develop-to-staging-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  manage-staging-release-label:
+  staging-release-label-management:
     name: Stagingリリースラベルの管理
     if: startsWith(github.event.pull_request.head.ref, 'develop/')
     runs-on: ubuntu-slim
@@ -27,8 +31,8 @@ jobs:
       - name: Ready for review時に「Stagingリリース」ラベルを付与
         if: github.event.pull_request.draft == false
         run: |
-          gh pr edit "$NUMBER" --add-label "Stagingリリース"
-          echo "Added 'Stagingリリース' label"
+          gh pr edit "$NUMBER" --add-label "${{ env.LABEL_STAGING_RELEASE }}" 2>/dev/null
+          echo "'${{ env.LABEL_STAGING_RELEASE }}'ラベルを追加しました"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -37,14 +41,14 @@ jobs:
       - name: Draft時に「Stagingリリース」ラベルを削除
         if: github.event.pull_request.draft == true
         run: |
-          gh pr edit "$NUMBER" --remove-label "Stagingリリース" || true
-          echo "Removed 'Stagingリリース' label"
+          gh pr edit "$NUMBER" --remove-label "${{ env.LABEL_STAGING_RELEASE }}" 2>/dev/null || true
+          echo "'${{ env.LABEL_STAGING_RELEASE }}'ラベルを削除しました"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.pull_request.number }}
 
-  prompt-staging-confirmation-label:
+  staging-confirmation-label-prompt:
     name: Staging確認中ラベルの付与を促す
     if: github.event.pull_request.base.ref == 'release/staging' && startsWith(github.event.pull_request.head.ref, 'develop/') && github.event.action == 'opened'
     runs-on: ubuntu-slim
@@ -54,8 +58,8 @@ jobs:
     steps:
       - name: Staging確認中ラベルの付与を促すコメントを追加
         run: |
-          gh pr comment "$NUMBER" --body "$BODY"
-          echo "Posted comment to prompt adding 'Staging確認中' label"
+          gh pr comment "$NUMBER" --body "$BODY" 2>/dev/null
+          echo "'Staging確認中'ラベル追加を促すコメントを投稿しました"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
