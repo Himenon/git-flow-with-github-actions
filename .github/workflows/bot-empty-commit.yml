@@ -1,0 +1,47 @@
+name: "[bot] 空コミット作成"
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch_name:
+        description: 'コミットを追加するブランチ名'
+        required: true
+        type: string
+
+jobs:
+  create-empty-commit:
+    name: 空コミットを作成
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Generate GitHub App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch_name }}
+          token: ${{ steps.generate-token.outputs.token }}
+          fetch-depth: 0
+      
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Create empty commit
+        run: |
+          git commit --allow-empty -m "Empty commit on ${{ inputs.branch_name }}"
+          git push origin ${{ inputs.branch_name }}
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+      
+      - name: Summary
+        run: |
+          echo "✅ 空コミットを \`${{ inputs.branch_name }}\` に追加しました" >> $GITHUB_STEP_SUMMARY
