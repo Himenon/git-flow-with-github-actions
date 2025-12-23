@@ -195,10 +195,9 @@ feature/* → develop/* → main
 
 ワークフローが正常に動作するには、以下のシークレットが必要です:
 
-- `GITHUB_TOKEN`: GitHub Actions デフォルトトークン（自動提供）
-- `GH_APP_ID`: GitHub App ID
-- `GH_APP_PRIVATE_KEY`: GitHub App 秘密鍵
-- `GH_PROJECT_TOKEN`: GitHub Projects へのアクセス権限を持つトークン
+- `APP_ID`: GitHub AppのAppID
+- `APP_PRIVATE_KEY`: GitHub AppのPrivate Key
+- `GH_PROJECT_TOKEN`: GitHub Projects へのアクセス権限を持つトークン（ユーザー用）
 
 ---
 
