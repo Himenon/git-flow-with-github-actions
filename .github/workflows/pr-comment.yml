@@ -20,7 +20,23 @@ jobs:
           BODY: >
             PRをオープンしていただきありがとうございます!
             セルフレビューをしておきましょう。
-  
+            <!-- opened-pr-comment -->
+          run: |
+            # 既存のコメントを検索（マーカーで識別）
+            COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
+              --jq '.[] | select(.body | contains("<!-- opened-pr-comment -->")) | .id' \
+              | head -n 1)
+            
+            if [ -n "$COMMENT_ID" ]; then
+              # 既存のコメントを更新
+              gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X PATCH -f body="$BODY"
+              echo "Updated existing comment #$COMMENT_ID"
+            else
+              # 新規コメントを作成
+              gh pr comment "$NUMBER" --body "$BODY"
+              echo "Created new comment"
+            fi
+
   develop-branch-warning:
     runs-on: ubuntu-slim
     permissions:
