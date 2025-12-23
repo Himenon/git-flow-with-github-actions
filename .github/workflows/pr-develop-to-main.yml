@@ -10,7 +10,7 @@ name: PR / develop → main
 
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review, converted_to_draft, synchronize]
+    types: [opened, reopened, ready_for_review, converted_to_draft, synchronize, labeled]
     branches:
       - main
 
@@ -34,7 +34,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.pull_request.number }}
-          BODY: >
+          BODY: |
             PRをオープンしていただきありがとうございます!
             セルフレビューをしておきましょう。
             <!-- opened-pr-comment -->
@@ -167,7 +167,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.pull_request.number }}
-          BODY: >
+          BODY: |
             このPRはドラフトに変更されました。
             <!-- draft-comment -->
         run: |
@@ -184,4 +184,32 @@ jobs:
             # 新規コメントを作成
             gh pr comment "$NUMBER" --body "$BODY"
             echo "Created new comment"
+          fi
+
+  # Staging確認中ラベル付与時のマイルストーン変更
+  # 「Staging確認中」ラベルが付与されたときにマイルストーン1に変更
+  manage-milestone-on-staging-label:
+    name: Staging確認中ラベル付与時のマイルストーン設定
+    if: startsWith(github.event.pull_request.head.ref, 'develop/') && github.event.action == 'labeled' && github.event.label.name == 'Staging確認中'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      
+    steps:
+      - name: マイルストーンを1に設定
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          MILESTONE_NUMBER=1
+          echo "Setting milestone 1 (Staging確認中)"
+          
+          if gh api repos/$REPO/issues/$PR_NUMBER -X PATCH -f milestone=$MILESTONE_NUMBER > /dev/null 2>&1; then
+            echo "✓ Milestone $MILESTONE_NUMBER added to PR #$PR_NUMBER"
+          else
+            echo "✗ Failed to add milestone to PR #$PR_NUMBER"
+            exit 1
           fi

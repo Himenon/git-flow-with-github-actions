@@ -1,0 +1,64 @@
+name: PR / feature → develop
+
+on:
+  pull_request:
+    types: [opened]
+    branches:
+      - 'develop/**'
+  pull_request_review:
+    types: [submitted]
+
+concurrency:
+  group: pr-feature-develop-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  initial-comment:
+    name: PR作成時のコメント
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'opened' &&
+      startsWith(github.event.pull_request.head.ref, 'feature/')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      
+    steps:
+      - name: Post initial comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr comment $PR_NUMBER --repo $REPO --body "## レビューの前に確認してください
+
+          * セルフレビューをしておきましょう。
+          * PRでスコープ外のことをしないように気をつけましょう。"
+
+  check-all-approved:
+    name: 全Approve後の通知コメント
+    if: |
+      github.event_name == 'pull_request_review' &&
+      github.event.review.state == 'approved' &&
+      startsWith(github.event.pull_request.head.ref, 'feature/')
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      
+    steps:
+      - name: Check if all reviews are approved
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          LAST_REVIEWER: ${{ github.event.review.user.login }}
+        run: |
+          # レビュー状態を取得
+          REVIEWS=$(gh api repos/$REPO/pulls/$PR_NUMBER/reviews --jq 'group_by(.user.login) | map({user: .[0].user.login, state: .[-1].state})')
+          
+          # すべてのレビューがAPPROVEDか確認
+          PENDING_REVIEWS=$(echo "$REVIEWS" | jq '[.[] | select(.state != "APPROVED")] | length')
+          
+          if [ "$PENDING_REVIEWS" -eq 0 ]; then
+            gh pr comment $PR_NUMBER --repo $REPO --body "@${LAST_REVIEWER} 、レビュー完了後に問題がなければSquash Mergeを実施してください。"
+          fi
