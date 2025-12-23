@@ -1,4 +1,4 @@
-name: Check / PR Title Prefix
+name: チェック / PRタイトルプレフィックス
 
 on:
   pull_request:

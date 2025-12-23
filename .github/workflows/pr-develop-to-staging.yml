@@ -1,4 +1,4 @@
-# develop/* -> release/staging のPull Request管理
+# develop/* -> release/staging のPR管理
 # このワークフローは develop/* ブランチから release/staging ブランチへのPRに対してのみ実行されます
 # - Ready for review時に「Stagingリリース」ラベルを付与
 # - Draft時に「Stagingリリース」ラベルを削除

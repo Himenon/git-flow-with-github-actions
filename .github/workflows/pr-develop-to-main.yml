@@ -1,4 +1,4 @@
-# develop/* -> main のPull Request管理
+# develop/* -> main のPR管理
 # このワークフローは develop/* ブランチから main ブランチへのPRに対してのみ実行されます
 # - PRオープン時のコメント投稿
 # - GitHub Projectsへの自動追加

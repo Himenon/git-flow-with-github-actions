@@ -1,4 +1,4 @@
-# Pull Requestのブランチルール管理
+# PRのブランチルール管理
 # 許可されるPRのパターン:
 # - develop/* -> main, release/staging
 # - feature/* -> develop/*
