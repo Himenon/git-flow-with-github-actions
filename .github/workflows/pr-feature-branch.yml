@@ -63,7 +63,9 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           BODY: >
             > [!WARNING]
+            >
             > ⚠️ **ベースブランチの確認**
+            >
             > `feature/*` ブランチのPRは `develop/*` ブランチに向けて作成してください。
             >
             > **現在の設定:**
