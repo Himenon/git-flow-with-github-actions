@@ -1,8 +1,8 @@
-name: Feature to Develop PR Actions
+name: PR / feature → develop
 
 on:
   pull_request:
-    # types: [opened]
+    types: [opened]
     branches:
       - 'develop/**'
   pull_request_review:
