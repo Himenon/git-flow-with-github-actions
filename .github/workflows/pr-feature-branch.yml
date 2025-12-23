@@ -62,27 +62,24 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           BODY: >
-            ⚠️ **ベースブランチの確認**
-
-
-            `feature/*` ブランチのPRは `develop/*` ブランチに向けて作成してください。
-
-
-            **現在の設定:**
-
-            - Base: `${{ github.event.pull_request.base.ref }}`
-
-            - Head: `${{ github.event.pull_request.head.ref }}`
-
-
-            **推奨される対応:**
-
-            1. このPRを閉じる
-
-            2. 適切な `develop/*` ブランチに向けて新しいPRを作成する
-
-
-            または、GitHub上でBase branchを変更することもできます。
+            > [!WARNING]
+            > ⚠️ **ベースブランチの確認**
+            > `feature/*` ブランチのPRは `develop/*` ブランチに向けて作成してください。
+            >
+            > **現在の設定:**
+            > 
+            > - Base: `${{ github.event.pull_request.base.ref }}`
+            >
+            > - Head: `${{ github.event.pull_request.head.ref }}`
+            > 
+            > **推奨される対応:**
+            > 
+            > 1. このPRを閉じる
+            >
+            > 2. 適切な `develop/*` ブランチに向けて新しいPRを作成する
+            >
+            >
+            > または、GitHub上でBase branchを変更することもできます。
 
             <!-- feature-base-branch-warning -->
         run: |
