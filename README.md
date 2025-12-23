@@ -6,7 +6,7 @@
 
 ---
 
-## 1. PR / ブランチルール (`pr-branch-rule.yml`)
+## 1. PR / ブランチ名ルール (`pr-branch-name-rule.yml`)
 
 **実行タイミング:** PR作成時
 
