@@ -9,7 +9,7 @@ on:
         type: string
 
 jobs:
-  create-empty-commit:
+  empty-commit-creation:
     name: 空コミットを作成
     runs-on: ubuntu-slim
     permissions:

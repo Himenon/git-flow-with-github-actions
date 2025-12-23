@@ -21,7 +21,7 @@ concurrency:
 jobs:
   # develop/* ブランチからのPRのみ処理対象
   # PRオープン時に自動コメントを投稿
-  comment-on-open:
+  pr-open-comment:
     name: PRオープン時のコメント投稿
     if: startsWith(github.event.pull_request.head.ref, 'develop/') && (github.event.action == 'opened' || github.event.action == 'ready_for_review') && github.event.pull_request.draft == false
     runs-on: ubuntu-slim
@@ -42,21 +42,21 @@ jobs:
           # 既存のコメントを検索（マーカーで識別）
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
             --jq '.[] | select(.body | contains("<!-- opened-pr-comment -->")) | .id' \
-            | head -n 1)
+            2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then
             # 既存のコメントを更新
-            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X PATCH -f body="$BODY"
-            echo "Updated existing comment #$COMMENT_ID"
+            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X PATCH -f body="$BODY" > /dev/null 2>&1
+            echo "既存のコメント #$COMMENT_ID を更新しました"
           else
             # 新規コメントを作成
-            gh pr comment "$NUMBER" --body "$BODY"
-            echo "Created new comment"
+            gh pr comment "$NUMBER" --body "$BODY" 2>/dev/null
+            echo "新規コメントを作成しました"
           fi
 
   # GitHub Projectsへの自動追加
   # develop/* -> main のPRを自動的にプロジェクトボードに追加し、ステータスを「In Progress」に設定
-  add-to-project:
+  github-project-addition:
     name: GitHub Projectsへの追加
     if: startsWith(github.event.pull_request.head.ref, 'develop/') && (github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'ready_for_review')
     runs-on: ubuntu-slim
@@ -86,11 +86,11 @@ jobs:
           PROJECT_ID: PVT_kwHOAGZ3Xc4BLIWA
           OPTION_ID: 47fc9ee4
         run: |
-          gh project item-edit --id $ITEM_ID --field-id $FIELD_ID --project-id $PROJECT_ID --single-select-option-id $OPTION_ID
+          gh project item-edit --id $ITEM_ID --field-id $FIELD_ID --project-id $PROJECT_ID --single-select-option-id $OPTION_ID > /dev/null 2>&1
 
   # リリース管理用ラベルの自動付与
   # Draft状態: 「開発中」ラベル / Ready for review: 「リリース前」ラベル
-  manage-labels:
+  release-label-management:
     name: リリース管理ラベルの設定
     if: startsWith(github.event.pull_request.head.ref, 'develop/')
     runs-on: ubuntu-slim
@@ -101,8 +101,8 @@ jobs:
       - name: Ready for review時に「リリース前」ラベル追加と「開発中」ラベル削除
         if: github.event.pull_request.draft == false
         run: |
-          gh pr edit "$NUMBER" --add-label "リリース前"
-          gh pr edit "$NUMBER" --remove-label "開発中" || true
+          gh pr edit "$NUMBER" --add-label "リリース前" 2>/dev/null
+          gh pr edit "$NUMBER" --remove-label "開発中" 2>/dev/null || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -111,8 +111,8 @@ jobs:
       - name: Draft時に「開発中」ラベル追加と「リリース前」ラベル削除
         if: github.event.pull_request.draft == true
         run: |
-          gh pr edit "$NUMBER" --add-label "開発中"
-          gh pr edit "$NUMBER" --remove-label "リリース前" || true
+          gh pr edit "$NUMBER" --add-label "開発中" 2>/dev/null
+          gh pr edit "$NUMBER" --remove-label "リリース前" 2>/dev/null || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -120,7 +120,7 @@ jobs:
 
   # マイルストーンの自動設定
   # Draft状態: マイルストーン2 / Ready for review: マイルストーン3
-  manage-milestone:
+  milestone-management:
     name: マイルストーンの設定
     if: startsWith(github.event.pull_request.head.ref, 'develop/') && (github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'ready_for_review' || github.event.action == 'converted_to_draft')
     runs-on: ubuntu-slim
@@ -139,22 +139,22 @@ jobs:
         run: |
           if [ "$IS_DRAFT" = "true" ]; then
             MILESTONE_NUMBER=2
-            echo "Setting milestone 2 (Draft)"
+            echo "マイルストーン2を設定中 (Draft)"
           else
             MILESTONE_NUMBER=3
-            echo "Setting milestone 3 (Open)"
+            echo "マイルストーン3を設定中 (Open)"
           fi
           
           if gh api repos/$REPO/issues/$PR_NUMBER -X PATCH -f milestone=$MILESTONE_NUMBER > /dev/null 2>&1; then
-            echo "✓ Milestone $MILESTONE_NUMBER added to PR #$PR_NUMBER"
+            echo "✓ マイルストーン $MILESTONE_NUMBER をPR #$PR_NUMBER に追加しました"
           else
-            echo "✗ Failed to add milestone to PR #$PR_NUMBER"
+            echo "✗ PR #$PR_NUMBER へのマイルストーン追加に失敗しました"
             exit 1
           fi
 
   # Draft変換時の通知コメント
   # PRがDraftに変換されたときに自動的にコメントを投稿
-  comment-on-draft:
+  draft-conversion-notification:
     name: Draft変換時の通知
     if: startsWith(github.event.pull_request.head.ref, 'develop/') && github.event.action == 'converted_to_draft'
     runs-on: ubuntu-slim
@@ -174,21 +174,21 @@ jobs:
           # 既存のコメントを検索（マーカーで識別）
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
             --jq '.[] | select(.body | contains("<!-- draft-comment -->")) | .id' \
-            | head -n 1)
+            2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then
             # 既存のコメントを更新
-            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X PATCH -f body="$BODY"
-            echo "Updated existing comment #$COMMENT_ID"
+            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X PATCH -f body="$BODY" > /dev/null 2>&1
+            echo "既存のコメント #$COMMENT_ID を更新しました"
           else
             # 新規コメントを作成
-            gh pr comment "$NUMBER" --body "$BODY"
-            echo "Created new comment"
+            gh pr comment "$NUMBER" --body "$BODY" 2>/dev/null
+            echo "新規コメントを作成しました"
           fi
 
   # Staging確認中ラベル付与時のマイルストーン変更
   # 「Staging確認中」ラベルが付与されたときにマイルストーン1に変更
-  manage-milestone-on-staging-label:
+  milestone-on-staging-label:
     name: Staging確認中ラベル付与時のマイルストーン設定
     if: startsWith(github.event.pull_request.head.ref, 'develop/') && github.event.action == 'labeled' && github.event.label.name == 'Staging確認中'
     runs-on: ubuntu-slim
@@ -205,11 +205,11 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           MILESTONE_NUMBER=1
-          echo "Setting milestone 1 (Staging確認中)"
+          echo "マイルストーン1を設定中 (Staging確認中)"
           
           if gh api repos/$REPO/issues/$PR_NUMBER -X PATCH -f milestone=$MILESTONE_NUMBER > /dev/null 2>&1; then
-            echo "✓ Milestone $MILESTONE_NUMBER added to PR #$PR_NUMBER"
+            echo "✓ マイルストーン $MILESTONE_NUMBER をPR #$PR_NUMBER に追加しました"
           else
-            echo "✗ Failed to add milestone to PR #$PR_NUMBER"
+            echo "✗ PR #$PR_NUMBER へのマイルストーン追加に失敗しました"
             exit 1
           fi

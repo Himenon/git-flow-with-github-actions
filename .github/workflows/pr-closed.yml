@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  cleanup-on-close:
+  cleanup-on-pr-close:
     name: クローズ時のクリーンアップ
     if: github.event.pull_request.merged == false
     runs-on: ubuntu-slim
@@ -26,13 +26,13 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           # すべてのラベルを取得して削除
-          LABELS=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels | jq -r '.labels[].name' | tr '\n' ',' | sed 's/,$//')
+          LABELS=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels 2>/dev/null | jq -r '.labels[].name' | tr '\n' ',' | sed 's/,$//')
           if [ -n "$LABELS" ]; then
-            echo "Removing labels: $LABELS"
-            gh pr edit "$PR_NUMBER" --repo "$REPO" --remove-label "$LABELS"
-            echo "✓ Labels removed"
+            echo "ラベル削除中: $LABELS"
+            gh pr edit "$PR_NUMBER" --repo "$REPO" --remove-label "$LABELS" 2>/dev/null
+            echo "✓ ラベルを削除しました"
           else
-            echo "No labels to remove"
+            echo "削除するラベルはありません"
           fi
       
       - name: マイルストーンの削除
@@ -41,9 +41,9 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          echo "Removing milestone"
-          gh pr edit "$PR_NUMBER" --repo "$REPO" --milestone "" || true
-          echo "✓ Milestone removed"
+          echo "マイルストーン削除中"
+          gh pr edit "$PR_NUMBER" --repo "$REPO" --milestone "" 2>/dev/null || true
+          echo "✓ マイルストーンを削除しました"
       
       - name: プロジェクトから削除
         env:
@@ -51,20 +51,20 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          echo "Fetching project items"
+          echo "プロジェクトアイテム取得中"
           PROJECT_ITEMS=$(gh api graphql -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){projectItems(first:10){nodes{id}}}}}' \
-            -f owner="${REPO%/*}" -f repo="${REPO#*/}" -F number="$PR_NUMBER" | jq -r '.data.repository.pullRequest.projectItems.nodes[].id')
+            -f owner="${REPO%/*}" -f repo="${REPO#*/}" -F number="$PR_NUMBER" 2>/dev/null | jq -r '.data.repository.pullRequest.projectItems.nodes[].id')
           
           if [ -n "$PROJECT_ITEMS" ]; then
-            echo "Found project items to remove:"
+            echo "削除するプロジェクトアイテムを見つけました:"
             echo "$PROJECT_ITEMS"
             echo "$PROJECT_ITEMS" | while read -r ITEM_ID; do
               if [ -n "$ITEM_ID" ]; then
-                echo "Removing item: $ITEM_ID"
-                gh api graphql -f query='mutation($itemId:ID!){deleteProjectV2Item(input:{itemId:$itemId}){deletedItemId}}' -f itemId="$ITEM_ID" || true
+                echo "アイテム削除中: $ITEM_ID"
+                gh api graphql -f query='mutation($itemId:ID!){deleteProjectV2Item(input:{itemId:$itemId}){deletedItemId}}' -f itemId="$ITEM_ID" > /dev/null 2>&1 || true
               fi
             done
-            echo "✓ Project items removed"
+            echo "✓ プロジェクトアイテムを削除しました"
           else
-            echo "No project items to remove"
+            echo "削除するプロジェクトアイテムはありません"
           fi

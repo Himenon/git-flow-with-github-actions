@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check-branch-rule:
+  branch-rule-checking:
     name: ブランチルールのチェック
     runs-on: ubuntu-slim
     permissions:
@@ -29,21 +29,21 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          echo "Checking: $HEAD_REF -> $BASE_REF"
+          echo "チェック中: $HEAD_REF -> $BASE_REF"
           VALID=false
           
           # HEADブランチのパターンをチェックし、許可されたBASEブランチへのマージか判定
           case "$HEAD_REF" in
             develop/*) [[ "$BASE_REF" == "main" || "$BASE_REF" == "release/staging" ]] && VALID=true ;;
-            feature/*) [[ "$BASE_REF" == develop/* ]] && VALID=true ;;  # develop/*へのワイルドカードマッチ
+            feature/*) [[ "$BASE_REF" == develop/* ]] && VALID=true ;;
             hotfix/*)  [[ "$BASE_REF" == "main" || "$BASE_REF" == "release/staging" ]] && VALID=true ;;
           esac
           
           if [ "$VALID" = true ]; then
-            echo "✓ Valid: $HEAD_REF -> $BASE_REF"
+            echo "✓ 有効: $HEAD_REF -> $BASE_REF"
             echo "valid=true" >> $GITHUB_OUTPUT
           else
-            echo "✗ Invalid branch combination"
+            echo "✗ 無効なブランチの組み合わせ"
             echo "valid=false" >> $GITHUB_OUTPUT
           fi
       
@@ -57,13 +57,13 @@ jobs:
           # 既存の警告コメントがあれば削除
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
             --jq '.[] | select(.body | contains("<!-- branch-rule-warning -->")) | .id' \
-            | head -n 1)
+            2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then
-            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X DELETE
-            echo "Deleted warning comment #$COMMENT_ID"
+            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X DELETE > /dev/null 2>&1
+            echo "警告コメント #$COMMENT_ID を削除しました"
           else
-            echo "No warning comment found"
+            echo "削除する警告コメントは見つかりませんでした"
           fi
       
       - name: 警告コメントを投稿（ルール違反の場合）
@@ -96,19 +96,19 @@ jobs:
             または、GitHub上でBase branchを変更することもできます。
             <!-- branch-rule-warning -->
         run: |
-          echo "Posting warning comment"
+          echo "警告コメントを投稿中"
           
           # 既存のコメントを検索（マーカーで識別）
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
             --jq '.[] | select(.body | contains("<!-- branch-rule-warning -->")) | .id' \
-            | head -n 1)
+            2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then
             # 既存のコメントを更新
-            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X PATCH -f body="$BODY"
-            echo "Updated existing warning comment #$COMMENT_ID"
+            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X PATCH -f body="$BODY" > /dev/null 2>&1
+            echo "既存の警告コメント #$COMMENT_ID を更新しました"
           else
             # 新規コメントを作成
-            gh pr comment "$NUMBER" --body "$BODY"
-            echo "Created new warning comment"
+            gh pr comment "$NUMBER" --body "$BODY" 2>/dev/null
+            echo "新規警告コメントを作成しました"
           fi

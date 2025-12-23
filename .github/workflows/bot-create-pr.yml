@@ -22,7 +22,7 @@ on:
         type: string
 
 jobs:
-  create-pull-request:
+  pr-creation:
     name: PRを作成
     runs-on: ubuntu-slim
     permissions:
@@ -59,7 +59,7 @@ jobs:
           
           # PRの本文が指定されていない場合はデフォルトメッセージ
           if [ -z "$PR_BODY" ]; then
-            PR_BODY="This PR was created automatically via workflow_dispatch."
+            PR_BODY="このPRはworkflow_dispatchにより自動作成されました。"
           fi
           
           # PRを作成
@@ -67,7 +67,7 @@ jobs:
             --base "$TARGET_BRANCH" \
             --head "$SOURCE_BRANCH" \
             --title "$PR_TITLE" \
-            --body "$PR_BODY")
+            --body "$PR_BODY" 2>/dev/null)
           
           echo "PR_URL=$PR_URL" >> $GITHUB_ENV
           echo "✅ PRを作成しました: $PR_URL" >> $GITHUB_STEP_SUMMARY
