@@ -44,3 +44,22 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.pull_request.number }}
+
+  # develop -> main のPRにStaging確認中ラベル付与を促すコメント
+  prompt-staging-confirmation-label:
+    name: Staging確認中ラベルの付与を促す
+    if: github.event.pull_request.head.ref == 'develop' && github.event.pull_request.base.ref == 'main' && github.event.action == 'opened'
+    runs-on: ubuntu-slim
+    permissions:
+      pull-requests: write
+    
+    steps:
+      - name: Staging確認中ラベルの付与を促すコメントを追加
+        run: |
+          gh pr comment "$NUMBER" --body "$BODY"
+          echo "Posted comment to prompt adding 'Staging確認中' label"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          BODY: このPRには「Staging確認中」ラベルを付与してください。
