@@ -1,23 +1,23 @@
-# PRのブランチルール管理
+# PRのブランチ名ルール管理
 # 許可されるPRのパターン:
 # - develop/* -> main, release/staging
 # - feature/* -> develop/*
 # - hotfix/* -> main, release/staging
 # それ以外のパターンは警告を出す
 
-name: PR / ブランチルール
+name: PR / ブランチ名ルール
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, edited]
 
 concurrency:
-  group: pr-branch-rule-${{ github.event.pull_request.number }}
+  group: pr-branch-name-rule-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  branch-rule-checking:
-    name: ブランチルールのチェック
+  branch-name-rule-checking:
+    name: ブランチ名ルールのチェック
     runs-on: ubuntu-slim
     permissions:
       pull-requests: write
@@ -56,7 +56,7 @@ jobs:
         run: |
           # 既存の警告コメントがあれば削除
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
-            --jq '.[] | select(.body | contains("<!-- branch-rule-warning -->")) | .id' \
+            --jq '.[] | select(.body | contains("<!-- branch-name-rule-warning -->")) | .id' \
             2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then
@@ -76,7 +76,7 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           BODY: |
             > [!WARNING]
-            > ⚠️ **ブランチルール違反**
+            > ⚠️ **ブランチ名ルール違反**
             > 
             > このPRのブランチの組み合わせは許可されていません。
             
@@ -94,13 +94,13 @@ jobs:
             2. 適切なブランチに向けて新しいPRを作成する
             
             または、GitHub上でBase branchを変更することもできます。
-            <!-- branch-rule-warning -->
+            <!-- branch-name-rule-warning -->
         run: |
           echo "警告コメントを投稿中"
           
           # 既存のコメントを検索（マーカーで識別）
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
-            --jq '.[] | select(.body | contains("<!-- branch-rule-warning -->")) | .id' \
+            --jq '.[] | select(.body | contains("<!-- branch-name-rule-warning -->")) | .id' \
             2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then
