@@ -23,7 +23,7 @@ jobs:
   # PRオープン時に自動コメントを投稿
   comment-on-open:
     name: PRオープン時のコメント投稿
-    if: startsWith(github.event.pull_request.head.ref, 'develop/') && (github.event.action == 'opened' || github.event.action == 'ready_for_review')
+    if: startsWith(github.event.pull_request.head.ref, 'develop/') && (github.event.action == 'opened' || github.event.action == 'ready_for_review') && github.event.pull_request.draft == false
     runs-on: ubuntu-slim
     permissions:
       pull-requests: write
@@ -123,7 +123,7 @@ jobs:
   manage-milestone:
     name: マイルストーンの設定
     if: startsWith(github.event.pull_request.head.ref, 'develop/') && (github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'ready_for_review' || github.event.action == 'converted_to_draft')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: read
       pull-requests: write
@@ -191,7 +191,7 @@ jobs:
   manage-milestone-on-staging-label:
     name: Staging確認中ラベル付与時のマイルストーン設定
     if: startsWith(github.event.pull_request.head.ref, 'develop/') && github.event.action == 'labeled' && github.event.label.name == 'Staging確認中'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: read
       pull-requests: write

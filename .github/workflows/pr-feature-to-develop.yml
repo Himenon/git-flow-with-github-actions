@@ -19,7 +19,7 @@ jobs:
       github.event_name == 'pull_request' &&
       github.event.action == 'opened' &&
       startsWith(github.event.pull_request.head.ref, 'feature/')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       pull-requests: write
       
@@ -30,7 +30,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          gh pr comment $PR_NUMBER --repo $REPO --body "## レビューの前に確認してください
+          gh pr comment $PR_NUMBER --repo $REPO --body "## レビュー依頼の前に確認してください
 
           * セルフレビューをしておきましょう。
           * PRでスコープ外のことをしないように気をつけましょう。"
@@ -41,7 +41,7 @@ jobs:
       github.event_name == 'pull_request_review' &&
       github.event.review.state == 'approved' &&
       startsWith(github.event.pull_request.head.ref, 'feature/')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       pull-requests: write
       

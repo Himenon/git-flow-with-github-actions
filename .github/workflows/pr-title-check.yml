@@ -2,7 +2,11 @@ name: Check / PR Title Prefix
 
 on:
   pull_request:
-    types: [opened, edited, reopened, ready_for_review]
+    types: [opened, edited]
+    branches:
+      - main
+      - release/staging
+      - 'develop/**'
 
 concurrency:
   group: pr-title-check-${{ github.event.pull_request.number }}
@@ -11,7 +15,7 @@ concurrency:
 jobs:
   check-pr-title:
     runs-on: ubuntu-slim
-    if: github.event.pull_request.base.ref == 'main'
+    if: github.event.action == 'opened' || github.event.changes.title != null
     permissions:
       pull-requests: write
     
@@ -30,8 +34,6 @@ jobs:
       
       - name: Comment on PR if invalid
         if: steps.check.outputs.valid == 'false'
-        run: |
-          gh pr comment "$NUMBER" --body "$BODY"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -50,6 +52,42 @@ jobs:
             - `chore:` - ビルドプロセスやツールの変更
             
             例: `feat: ユーザー認証機能を追加`
+            <!-- pr-title-check-comment -->
+        run: |
+          # 既存のコメントを検索（マーカーで識別）
+          COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
+            --jq '.[] | select(.body | contains("<!-- pr-title-check-comment -->")) | .id' \
+            | head -n 1)
+          
+          if [ -n "$COMMENT_ID" ]; then
+            # 既存のコメントを更新
+            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X PATCH -f body="$BODY"
+            echo "Updated existing comment #$COMMENT_ID"
+          else
+            # 新規コメントを作成
+            gh pr comment "$NUMBER" --body "$BODY"
+            echo "Created new comment"
+          fi
+      
+      - name: Delete comment if valid
+        if: steps.check.outputs.valid == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # 既存のコメントを検索（マーカーで識別）
+          COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
+            --jq '.[] | select(.body | contains("<!-- pr-title-check-comment -->")) | .id' \
+            | head -n 1)
+          
+          if [ -n "$COMMENT_ID" ]; then
+            # コメントを削除
+            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X DELETE
+            echo "Deleted comment #$COMMENT_ID"
+          else
+            echo "No comment to delete"
+          fi
       
       - name: Fail if invalid
         if: steps.check.outputs.valid == 'false'
