@@ -26,10 +26,10 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           # すべてのラベルを取得して削除
-          LABELS=$(gh pr view $PR_NUMBER --repo $REPO --json labels --jq -r '.labels[].name' | paste -sd,)
+          LABELS=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels | jq -r '.labels[].name' | tr '\n' ',' | sed 's/,$//')
           if [ -n "$LABELS" ]; then
             echo "Removing labels: $LABELS"
-            gh pr edit $PR_NUMBER --repo $REPO --remove-label "$LABELS"
+            gh pr edit "$PR_NUMBER" --repo "$REPO" --remove-label "$LABELS"
             echo "✓ Labels removed"
           else
             echo "No labels to remove"
@@ -42,7 +42,7 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           echo "Removing milestone"
-          gh pr edit $PR_NUMBER --repo $REPO --milestone "" || true
+          gh pr edit "$PR_NUMBER" --repo "$REPO" --milestone "" || true
           echo "✓ Milestone removed"
       
       - name: プロジェクトから削除
@@ -53,7 +53,7 @@ jobs:
         run: |
           echo "Fetching project items"
           PROJECT_ITEMS=$(gh api graphql -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){projectItems(first:10){nodes{id}}}}}' \
-            -f owner="${REPO%/*}" -f repo="${REPO#*/}" -F number=$PR_NUMBER --jq -r '.data.repository.pullRequest.projectItems.nodes[].id')
+            -f owner="${REPO%/*}" -f repo="${REPO#*/}" -F number="$PR_NUMBER" | jq -r '.data.repository.pullRequest.projectItems.nodes[].id')
           
           if [ -n "$PROJECT_ITEMS" ]; then
             echo "Found project items to remove:"
