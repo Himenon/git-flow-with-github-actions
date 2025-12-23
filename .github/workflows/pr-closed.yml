@@ -12,14 +12,14 @@ jobs:
   cleanup-on-close:
     name: クローズ時のクリーンアップ
     if: github.event.pull_request.merged == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: read
       pull-requests: write
       issues: write
       
     steps:
-      - name: Label, Projects, Milestoneの削除
+      - name: ラベルの削除
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -27,12 +27,44 @@ jobs:
         run: |
           # すべてのラベルを取得して削除
           LABELS=$(gh pr view $PR_NUMBER --repo $REPO --json labels --jq -r '.labels[].name' | paste -sd,)
-          [ -n "$LABELS" ] && gh pr edit $PR_NUMBER --repo $REPO --remove-label "$LABELS" || true
-          
-          # マイルストーンを削除
+          if [ -n "$LABELS" ]; then
+            echo "Removing labels: $LABELS"
+            gh pr edit $PR_NUMBER --repo $REPO --remove-label "$LABELS"
+            echo "✓ Labels removed"
+          else
+            echo "No labels to remove"
+          fi
+      
+      - name: マイルストーンの削除
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Removing milestone"
           gh pr edit $PR_NUMBER --repo $REPO --milestone "" || true
+          echo "✓ Milestone removed"
+      
+      - name: プロジェクトから削除
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Fetching project items"
+          PROJECT_ITEMS=$(gh api graphql -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){projectItems(first:10){nodes{id}}}}}' \
+            -f owner="${REPO%/*}" -f repo="${REPO#*/}" -F number=$PR_NUMBER --jq -r '.data.repository.pullRequest.projectItems.nodes[].id')
           
-          # すべてのプロジェクトから削除
-          gh api graphql -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){projectItems(first:10){nodes{id}}}}}' \
-            -f owner="${REPO%/*}" -f repo="${REPO#*/}" -F number=$PR_NUMBER --jq -r '.data.repository.pullRequest.projectItems.nodes[].id' | \
-            xargs -I {} gh api graphql -f query='mutation($itemId:ID!){deleteProjectV2Item(input:{itemId:$itemId}){deletedItemId}}' -f itemId={} 2>/dev/null || true
+          if [ -n "$PROJECT_ITEMS" ]; then
+            echo "Found project items to remove:"
+            echo "$PROJECT_ITEMS"
+            echo "$PROJECT_ITEMS" | while read -r ITEM_ID; do
+              if [ -n "$ITEM_ID" ]; then
+                echo "Removing item: $ITEM_ID"
+                gh api graphql -f query='mutation($itemId:ID!){deleteProjectV2Item(input:{itemId:$itemId}){deletedItemId}}' -f itemId="$ITEM_ID" || true
+              fi
+            done
+            echo "✓ Project items removed"
+          else
+            echo "No project items to remove"
+          fi

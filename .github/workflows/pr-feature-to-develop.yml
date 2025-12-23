@@ -2,7 +2,7 @@ name: PR / feature → develop
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, review_requested]
     branches:
       - 'develop/**'
   pull_request_review:
@@ -19,21 +19,52 @@ jobs:
       github.event_name == 'pull_request' &&
       github.event.action == 'opened' &&
       startsWith(github.event.pull_request.head.ref, 'feature/')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       pull-requests: write
       
     steps:
-      - name: Post initial comment
+      - name: 初期コメントを投稿
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          gh pr comment $PR_NUMBER --repo $REPO --body "## レビューの前に確認してください
+          gh pr comment $PR_NUMBER --repo $REPO --body "## レビュー依頼の前に確認してください
 
           * セルフレビューをしておきましょう。
           * PRでスコープ外のことをしないように気をつけましょう。"
+
+  delete-approved-comment-on-rerequest:
+    name: レビュー再要求時に承認コメント削除
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'review_requested' &&
+      startsWith(github.event.pull_request.head.ref, 'feature/')
+    runs-on: ubuntu-slim
+    permissions:
+      pull-requests: write
+      
+    steps:
+      - name: 承認通知コメントを削除
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          COMMENT_MARKER: "<!-- all-approved-notification -->"
+        run: |
+          # 承認通知コメントを検索して削除
+          COMMENTS=$(gh api repos/$REPO/issues/$PR_NUMBER/comments --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$COMMENT_MARKER\"))) | .id")
+          
+          if [ -n "$COMMENTS" ]; then
+            echo "$COMMENTS" | while read -r COMMENT_ID; do
+              echo "Deleting comment: $COMMENT_ID"
+              gh api -X DELETE repos/$REPO/issues/comments/$COMMENT_ID
+            done
+            echo "Deleted approval notification comments due to review re-request"
+          else
+            echo "No approval notification comments to delete"
+          fi
 
   check-all-approved:
     name: 全Approve後の通知コメント
@@ -41,17 +72,20 @@ jobs:
       github.event_name == 'pull_request_review' &&
       github.event.review.state == 'approved' &&
       startsWith(github.event.pull_request.head.ref, 'feature/')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       pull-requests: write
       
     steps:
-      - name: Check if all reviews are approved
+      - name: 全レビューが承認されたか確認
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           LAST_REVIEWER: ${{ github.event.review.user.login }}
+          COMMENT_MARKER: "<!-- all-approved-notification -->"
+          MESSAGE: |
+            レビュー完了後に問題がなければ**Squash Merge**を実施してください。
         run: |
           # レビュー状態を取得
           REVIEWS=$(gh api repos/$REPO/pulls/$PR_NUMBER/reviews --jq 'group_by(.user.login) | map({user: .[0].user.login, state: .[-1].state})')
@@ -59,6 +93,18 @@ jobs:
           # すべてのレビューがAPPROVEDか確認
           PENDING_REVIEWS=$(echo "$REVIEWS" | jq '[.[] | select(.state != "APPROVED")] | length')
           
+          # 以前のボットコメントを検索して削除
+          COMMENTS=$(gh api repos/$REPO/issues/$PR_NUMBER/comments --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$COMMENT_MARKER\"))) | .id")
+          
+          if [ -n "$COMMENTS" ]; then
+            echo "$COMMENTS" | while read -r COMMENT_ID; do
+              echo "Deleting comment: $COMMENT_ID"
+              gh api -X DELETE repos/$REPO/issues/comments/$COMMENT_ID
+            done
+          fi
+          
+          # すべて承認されている場合のみ新しいコメントを投稿
           if [ "$PENDING_REVIEWS" -eq 0 ]; then
-            gh pr comment $PR_NUMBER --repo $REPO --body "@${LAST_REVIEWER} 、レビュー完了後に問題がなければSquash Mergeを実施してください。"
+            gh pr comment $PR_NUMBER --repo $REPO --body "${COMMENT_MARKER}
+          @${LAST_REVIEWER} ${MESSAGE}"
           fi

@@ -16,7 +16,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # develop/* -> release/staging のPRのラベル管理
   manage-staging-release-label:
     name: Stagingリリースラベルの管理
     if: startsWith(github.event.pull_request.head.ref, 'develop/')
@@ -45,10 +44,9 @@ jobs:
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.pull_request.number }}
 
-  # develop -> main のPRにStaging確認中ラベル付与を促すコメント
   prompt-staging-confirmation-label:
     name: Staging確認中ラベルの付与を促す
-    if: github.event.pull_request.head.ref == 'develop' && github.event.pull_request.base.ref == 'main' && github.event.action == 'opened'
+    if: github.event.pull_request.base.ref == 'release/staging' && startsWith(github.event.pull_request.head.ref, 'develop/') && github.event.action == 'opened'
     runs-on: ubuntu-slim
     permissions:
       pull-requests: write
@@ -62,4 +60,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.pull_request.number }}
-          BODY: このPRには「Staging確認中」ラベルを付与してください。
+          BODY: 本PRマージ後、developブランチに**Staging確認中**ラベルを付与してください。
