@@ -1,0 +1,22 @@
+name: Add Milestone on Production Label
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  add-milestone:
+    if: github.event.label.name == 'production'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      
+    steps:
+      - name: Add milestone to PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr edit $PR_NUMBER --milestone 1
