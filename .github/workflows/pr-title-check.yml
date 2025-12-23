@@ -2,7 +2,7 @@ name: Check / PR Title Prefix
 
 on:
   pull_request:
-    types: [opened, edited, reopened, ready_for_review]
+    types: [opened, edited]
     branches:
       - main
       - release/staging
@@ -15,6 +15,7 @@ concurrency:
 jobs:
   check-pr-title:
     runs-on: ubuntu-slim
+    if: github.event.action == 'opened' || github.event.changes.title != null
     permissions:
       pull-requests: write
     
