@@ -29,41 +29,22 @@ jobs:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          echo "Checking branch combination:"
-          echo "  Head: $HEAD_REF"
-          echo "  Base: $BASE_REF"
-          
+          echo "Checking: $HEAD_REF -> $BASE_REF"
           VALID=false
           
-          # develop/* -> main, release/staging
-          if [[ "$HEAD_REF" == develop/* ]]; then
-            if [[ "$BASE_REF" == "main" ]] || [[ "$BASE_REF" == "release/staging" ]]; then
-              VALID=true
-              echo "✓ Valid: develop/* -> main or release/staging"
-            fi
-          fi
-          
-          # feature/* -> develop/*
-          if [[ "$HEAD_REF" == feature/* ]]; then
-            if [[ "$BASE_REF" == develop/* ]]; then
-              VALID=true
-              echo "✓ Valid: feature/* -> develop/*"
-            fi
-          fi
-          
-          # hotfix/* -> main, release/staging
-          if [[ "$HEAD_REF" == hotfix/* ]]; then
-            if [[ "$BASE_REF" == "main" ]] || [[ "$BASE_REF" == "release/staging" ]]; then
-              VALID=true
-              echo "✓ Valid: hotfix/* -> main or release/staging"
-            fi
-          fi
+          # HEADブランチのパターンをチェックし、許可されたBASEブランチへのマージか判定
+          case "$HEAD_REF" in
+            develop/*) [[ "$BASE_REF" == "main" || "$BASE_REF" == "release/staging" ]] && VALID=true ;;
+            feature/*) [[ "$BASE_REF" == develop/* ]] && VALID=true ;;  # develop/*へのワイルドカードマッチ
+            hotfix/*)  [[ "$BASE_REF" == "main" || "$BASE_REF" == "release/staging" ]] && VALID=true ;;
+          esac
           
           if [ "$VALID" = true ]; then
+            echo "✓ Valid: $HEAD_REF -> $BASE_REF"
             echo "valid=true" >> $GITHUB_OUTPUT
           else
-            echo "valid=false" >> $GITHUB_OUTPUT
             echo "✗ Invalid branch combination"
+            echo "valid=false" >> $GITHUB_OUTPUT
           fi
       
       - name: 警告コメントを削除（ルールが正しい場合）
