@@ -1,4 +1,4 @@
-name: "[bot] Pull Request作成"
+name: "[bot] PR作成"
 
 on:
   workflow_dispatch:
@@ -22,8 +22,8 @@ on:
         type: string
 
 jobs:
-  create-pull-request:
-    name: Pull Requestを作成
+  pr-creation:
+    name: PRを作成
     runs-on: ubuntu-slim
     permissions:
       contents: read
@@ -44,7 +44,7 @@ jobs:
           token: ${{ steps.generate-token.outputs.token }}
           fetch-depth: 0
       
-      - name: Create Pull Request
+      - name: Create PR
         env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
           SOURCE_BRANCH: ${{ inputs.source_branch }}
@@ -59,19 +59,19 @@ jobs:
           
           # PRの本文が指定されていない場合はデフォルトメッセージ
           if [ -z "$PR_BODY" ]; then
-            PR_BODY="This PR was created automatically via workflow_dispatch."
+            PR_BODY="このPRはworkflow_dispatchにより自動作成されました。"
           fi
           
-          # Pull Requestを作成
+          # PRを作成
           PR_URL=$(gh pr create \
             --base "$TARGET_BRANCH" \
             --head "$SOURCE_BRANCH" \
             --title "$PR_TITLE" \
-            --body "$PR_BODY")
+            --body "$PR_BODY" 2>/dev/null)
           
           echo "PR_URL=$PR_URL" >> $GITHUB_ENV
-          echo "✅ Pull Requestを作成しました: $PR_URL" >> $GITHUB_STEP_SUMMARY
+          echo "✅ PRを作成しました: $PR_URL" >> $GITHUB_STEP_SUMMARY
       
       - name: Output PR URL
         run: |
-          echo "::notice title=Pull Request作成完了::${{ env.PR_URL }}"
+          echo "::notice title=PR作成完了::${{ env.PR_URL }}"

@@ -1,4 +1,4 @@
-name: Check / PR Title Prefix
+name: チェック / PRタイトルプレフィックス
 
 on:
   pull_request:
@@ -13,7 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check-pr-title:
+  pr-title-checking:
+    name: PRタイトルプレフィックスのチェック
     runs-on: ubuntu-slim
     if: |
       github.event.pull_request.state == 'open' &&
@@ -22,7 +23,7 @@ jobs:
       pull-requests: write
     
     steps:
-      - name: Check PR title prefix
+      - name: PRタイトルプレフィックスをチェック
         id: check
         run: |
           TITLE="${{ github.event.pull_request.title }}"
@@ -34,7 +35,7 @@ jobs:
             echo "valid=false" >> $GITHUB_OUTPUT
           fi
       
-      - name: Comment on PR if invalid
+      - name: 無効な場合はPRにコメント
         if: steps.check.outputs.valid == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -59,19 +60,19 @@ jobs:
           # 既存のコメントを検索（マーカーで識別）
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
             --jq '.[] | select(.body | contains("<!-- pr-title-check-comment -->")) | .id' \
-            | head -n 1)
+            2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then
             # 既存のコメントを更新
-            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X PATCH -f body="$BODY"
-            echo "Updated existing comment #$COMMENT_ID"
+            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X PATCH -f body="$BODY" > /dev/null 2>&1
+            echo "既存のコメント #$COMMENT_ID を更新しました"
           else
             # 新規コメントを作成
-            gh pr comment "$NUMBER" --body "$BODY"
-            echo "Created new comment"
+            gh pr comment "$NUMBER" --body "$BODY" 2>/dev/null
+            echo "新規コメントを作成しました"
           fi
       
-      - name: Delete comment if valid
+      - name: 有効な場合はコメントを削除
         if: steps.check.outputs.valid == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -81,18 +82,18 @@ jobs:
           # 既存のコメントを検索（マーカーで識別）
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
             --jq '.[] | select(.body | contains("<!-- pr-title-check-comment -->")) | .id' \
-            | head -n 1)
+            2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then
             # コメントを削除
-            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X DELETE
-            echo "Deleted comment #$COMMENT_ID"
+            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X DELETE > /dev/null 2>&1
+            echo "コメント #$COMMENT_ID を削除しました"
           else
-            echo "No comment to delete"
+            echo "削除するコメントはありません"
           fi
       
-      - name: Fail if invalid
+      - name: 無効な場合は失敗
         if: steps.check.outputs.valid == 'false'
         run: |
-          echo "PR title does not have a valid prefix"
+          echo "PRタイトルに有効なプレフィックスがありません"
           exit 1
