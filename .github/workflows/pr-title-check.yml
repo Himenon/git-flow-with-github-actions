@@ -3,6 +3,10 @@ name: Check / PR Title Prefix
 on:
   pull_request:
     types: [opened, edited, reopened, ready_for_review]
+    branches:
+      - main
+      - release/staging
+      - 'develop/**'
 
 concurrency:
   group: pr-title-check-${{ github.event.pull_request.number }}
@@ -11,7 +15,6 @@ concurrency:
 jobs:
   check-pr-title:
     runs-on: ubuntu-slim
-    if: github.event.pull_request.base.ref == 'main'
     permissions:
       pull-requests: write
     

@@ -19,7 +19,7 @@ jobs:
       github.event_name == 'pull_request' &&
       github.event.action == 'opened' &&
       startsWith(github.event.pull_request.head.ref, 'feature/')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       pull-requests: write
       
@@ -41,7 +41,7 @@ jobs:
       github.event_name == 'pull_request_review' &&
       github.event.review.state == 'approved' &&
       startsWith(github.event.pull_request.head.ref, 'feature/')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       pull-requests: write
       

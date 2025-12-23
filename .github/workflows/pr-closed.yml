@@ -12,7 +12,7 @@ jobs:
   cleanup-on-close:
     name: クローズ時のクリーンアップ
     if: github.event.pull_request.merged == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: read
       pull-requests: write
