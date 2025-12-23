@@ -1,0 +1,102 @@
+# develop/* ブランチからのPull Request管理
+# このワークフローは develop/* ブランチからのPRに対してのみ実行されます
+# - baseブランチが main または release/staging であることを確認
+# - それ以外の場合は警告コメントを投稿
+
+name: PR / develop ブランチ
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize, edited]
+
+concurrency:
+  group: pr-develop-branch-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # develop/* ブランチからのPRで、baseが許可されたブランチの場合の処理
+  remove-warning-if-base-is-allowed:
+    name: 警告コメントの削除（base が許可されたブランチの場合）
+    if: startsWith(github.event.pull_request.head.ref, 'develop/') && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'release/staging')
+    runs-on: ubuntu-slim
+    permissions:
+      pull-requests: write
+    
+    steps:
+      - name: 既存の警告コメントを削除
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          echo "✓ Base branch is allowed - OK"
+          echo "Base: $BASE_REF"
+          
+          # 既存の警告コメントがあれば削除
+          COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
+            --jq '.[] | select(.body | contains("<!-- develop-base-branch-warning -->")) | .id' \
+            | head -n 1)
+          
+          if [ -n "$COMMENT_ID" ]; then
+            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X DELETE
+            echo "Deleted warning comment #$COMMENT_ID"
+          else
+            echo "No warning comment found"
+          fi
+
+  # develop/* ブランチからのPRで、baseが許可されていない場合の処理
+  add-warning-if-base-not-allowed:
+    name: ベースブランチ警告（base が許可されていない場合）
+    if: startsWith(github.event.pull_request.head.ref, 'develop/') && !(github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'release/staging')
+    runs-on: ubuntu-slim
+    permissions:
+      pull-requests: write
+    
+    steps:
+      - name: 警告コメントを投稿
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BODY: |
+            > [!WARNING]
+            > ⚠️ **ベースブランチの確認**
+            > 
+            > `develop/*` ブランチのPRは `main` または `release/staging` ブランチに向けて作成してください。
+            
+            **現在の設定:**
+            - Base: `${{ github.event.pull_request.base.ref }}`
+            - Head: `${{ github.event.pull_request.head.ref }}`
+            
+            **許可されているbaseブランチ:**
+            - `main`
+            - `release/staging`
+            
+            **推奨される対応:**
+            1. このPRを閉じる
+            2. 適切なブランチ（`main` または `release/staging`）に向けて新しいPRを作成する
+            
+            または、GitHub上でBase branchを変更することもできます。
+            <!-- develop-base-branch-warning -->
+        run: |
+          echo "✗ Base branch is not allowed"
+          echo "Base: $BASE_REF"
+          echo "Head: $HEAD_REF"
+          
+          # 既存のコメントを検索（マーカーで識別）
+          COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
+            --jq '.[] | select(.body | contains("<!-- develop-base-branch-warning -->")) | .id' \
+            | head -n 1)
+          
+          if [ -n "$COMMENT_ID" ]; then
+            # 既存のコメントを更新
+            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X PATCH -f body="$BODY"
+            echo "Updated existing warning comment #$COMMENT_ID"
+          else
+            # 新規コメントを作成
+            gh pr comment "$NUMBER" --body "$BODY"
+            echo "Created new warning comment"
+          fi

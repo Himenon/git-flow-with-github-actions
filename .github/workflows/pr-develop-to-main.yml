@@ -34,7 +34,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.pull_request.number }}
-          BODY: >
+          BODY: |
             PRをオープンしていただきありがとうございます!
             セルフレビューをしておきましょう。
             <!-- opened-pr-comment -->
@@ -167,7 +167,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.pull_request.number }}
-          BODY: >
+          BODY: |
             このPRはドラフトに変更されました。
             <!-- draft-comment -->
         run: |
