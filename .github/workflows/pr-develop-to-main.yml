@@ -23,7 +23,7 @@ jobs:
   # PRオープン時に自動コメントを投稿
   comment-on-open:
     name: PRオープン時のコメント投稿
-    if: startsWith(github.event.pull_request.head.ref, 'develop/') && (github.event.action == 'opened' || github.event.action == 'ready_for_review')
+    if: startsWith(github.event.pull_request.head.ref, 'develop/') && (github.event.action == 'opened' || github.event.action == 'ready_for_review') && github.event.pull_request.draft == false
     runs-on: ubuntu-slim
     permissions:
       pull-requests: write
