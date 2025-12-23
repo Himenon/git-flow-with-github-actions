@@ -52,6 +52,9 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           LAST_REVIEWER: ${{ github.event.review.user.login }}
+          COMMENT_MARKER: "<!-- all-approved-notification -->"
+          MESSAGE: |
+            レビュー完了後に問題がなければ**Squash Merge**を実施してください。
         run: |
           # レビュー状態を取得
           REVIEWS=$(gh api repos/$REPO/pulls/$PR_NUMBER/reviews --jq 'group_by(.user.login) | map({user: .[0].user.login, state: .[-1].state})')
@@ -59,6 +62,18 @@ jobs:
           # すべてのレビューがAPPROVEDか確認
           PENDING_REVIEWS=$(echo "$REVIEWS" | jq '[.[] | select(.state != "APPROVED")] | length')
           
+          # 以前のボットコメントを検索して削除
+          COMMENTS=$(gh api repos/$REPO/issues/$PR_NUMBER/comments --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$COMMENT_MARKER\"))) | .id")
+          
+          if [ -n "$COMMENTS" ]; then
+            echo "$COMMENTS" | while read -r COMMENT_ID; do
+              echo "Deleting comment: $COMMENT_ID"
+              gh api -X DELETE repos/$REPO/issues/comments/$COMMENT_ID
+            done
+          fi
+          
+          # すべて承認されている場合のみ新しいコメントを投稿
           if [ "$PENDING_REVIEWS" -eq 0 ]; then
-            gh pr comment $PR_NUMBER --repo $REPO --body "@${LAST_REVIEWER} 、レビュー完了後に問題がなければSquash Mergeを実施してください。"
+            gh pr comment $PR_NUMBER --repo $REPO --body "${COMMENT_MARKER}
+          @${LAST_REVIEWER} ${MESSAGE}"
           fi

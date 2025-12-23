@@ -15,7 +15,9 @@ concurrency:
 jobs:
   check-pr-title:
     runs-on: ubuntu-slim
-    if: github.event.action == 'opened' || github.event.changes.title != null
+    if: |
+      github.event.pull_request.state == 'open' &&
+      (github.event.action == 'opened' || github.event.changes.title != null)
     permissions:
       pull-requests: write
     
