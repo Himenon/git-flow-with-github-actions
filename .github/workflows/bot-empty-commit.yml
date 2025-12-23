@@ -1,4 +1,4 @@
-name: 空コミット作成
+name: "[bot] 空コミット作成"
 
 on:
   workflow_dispatch:

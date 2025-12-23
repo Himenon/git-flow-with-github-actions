@@ -1,4 +1,4 @@
-name: Pull Request作成
+name: "[bot] Pull Request作成"
 
 on:
   workflow_dispatch:
