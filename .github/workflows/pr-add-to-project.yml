@@ -30,8 +30,8 @@ jobs:
 
       - name: Set status to In Progress
         env:
-          # GITHUB_TOKEN: ${{ secrets.GH_PROJECT_TOKEN }}
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GH_PROJECT_TOKEN }}
+          # GH_TOKEN: ${{ github.token }}
           ITEM_ID: ${{ steps.add-to-project.outputs.itemId }}
           FIELD_ID: PVTSSF_lAHOAGZ3Xc4BLIWAzg6y8i0
           PROJECT_ID: PVT_kwHOAGZ3Xc4BLIWA
