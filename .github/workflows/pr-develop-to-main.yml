@@ -14,6 +14,28 @@ on:
     branches:
       - main
 
+env:
+  # マイルストーン定義
+  MILESTONE_VERIFICATION: 1  # 動作確認マイルストーン: https://github.com/Himenon/michibiki/milestone/1
+  MILESTONE_IN_DEVELOPMENT: 2  # 開発中マイルストーン: https://github.com/Himenon/michibiki/milestone/2
+  MILESTONE_NEXT_RELEASE: 3  # 次回リリースマイルストーン: https://github.com/Himenon/michibiki/milestone/3
+  
+  # GitHub Project Field ID定義 (https://github.com/users/Himenon/projects/2)
+  PROJECT_URL: https://github.com/users/Himenon/projects/2
+  PROJECT_ID: PVT_kwHOAGZ3Xc4BLIWA
+  PROJECT_FIELD_ID: PVTSSF_lAHOAGZ3Xc4BLIWAzg6y8i0
+  PROJECT_STATUS_TODO: f75ad846  # Todo
+  PROJECT_STATUS_IN_PROGRESS: 47fc9ee4  # In Progress
+  PROJECT_STATUS_TEST: caeb4054  # Test
+  PROJECT_STATUS_DONE: 98236657  # Done
+  
+  # ラベル定義
+  LABEL_IN_DEVELOPMENT: 開発中
+  LABEL_BEFORE_RELEASE: リリース前
+  LABEL_STAGING_RELEASE: Stagingリリース
+  LABEL_STAGING_VERIFICATION: Staging確認中
+  LABEL_COMPLETED: completed
+
 concurrency:
   group: pr-develop-to-main-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -75,18 +97,15 @@ jobs:
         uses: actions/add-to-project@v1.0.2
         id: add-to-project
         with:
-          project-url: https://github.com/users/Himenon/projects/2
+          project-url: ${{ env.PROJECT_URL }}
           github-token: ${{ secrets.GH_PROJECT_TOKEN }}
 
       - name: ステータスを「In Progress」に設定
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PROJECT_TOKEN }}
           ITEM_ID: ${{ steps.add-to-project.outputs.itemId }}
-          FIELD_ID: PVTSSF_lAHOAGZ3Xc4BLIWAzg6y8i0
-          PROJECT_ID: PVT_kwHOAGZ3Xc4BLIWA
-          OPTION_ID: 47fc9ee4
         run: |
-          gh project item-edit --id $ITEM_ID --field-id $FIELD_ID --project-id $PROJECT_ID --single-select-option-id $OPTION_ID > /dev/null 2>&1
+          gh project item-edit --id $ITEM_ID --field-id ${{ env.PROJECT_FIELD_ID }} --project-id ${{ env.PROJECT_ID }} --single-select-option-id ${{ env.PROJECT_STATUS_IN_PROGRESS }} > /dev/null 2>&1
 
   # リリース管理用ラベルの自動付与
   # Draft状態: 「開発中」ラベル / Ready for review: 「リリース前」ラベル
@@ -101,8 +120,8 @@ jobs:
       - name: Ready for review時に「リリース前」ラベル追加と「開発中」ラベル削除
         if: github.event.pull_request.draft == false
         run: |
-          gh pr edit "$NUMBER" --add-label "リリース前" 2>/dev/null
-          gh pr edit "$NUMBER" --remove-label "開発中" 2>/dev/null || true
+          gh pr edit "$NUMBER" --add-label "${{ env.LABEL_BEFORE_RELEASE }}" 2>/dev/null
+          gh pr edit "$NUMBER" --remove-label "${{ env.LABEL_IN_DEVELOPMENT }}" 2>/dev/null || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -111,8 +130,8 @@ jobs:
       - name: Draft時に「開発中」ラベル追加と「リリース前」ラベル削除
         if: github.event.pull_request.draft == true
         run: |
-          gh pr edit "$NUMBER" --add-label "開発中" 2>/dev/null
-          gh pr edit "$NUMBER" --remove-label "リリース前" 2>/dev/null || true
+          gh pr edit "$NUMBER" --add-label "${{ env.LABEL_IN_DEVELOPMENT }}" 2>/dev/null
+          gh pr edit "$NUMBER" --remove-label "${{ env.LABEL_BEFORE_RELEASE }}" 2>/dev/null || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -138,11 +157,11 @@ jobs:
           IS_DRAFT: ${{ github.event.pull_request.draft }}
         run: |
           if [ "$IS_DRAFT" = "true" ]; then
-            MILESTONE_NUMBER=2
-            echo "マイルストーン2を設定中 (Draft)"
+            MILESTONE_NUMBER=${{ env.MILESTONE_IN_DEVELOPMENT }}
+            echo "マイルストーン${MILESTONE_NUMBER}を設定中 (Draft)"
           else
-            MILESTONE_NUMBER=3
-            echo "マイルストーン3を設定中 (Open)"
+            MILESTONE_NUMBER=${{ env.MILESTONE_NEXT_RELEASE }}
+            echo "マイルストーン${MILESTONE_NUMBER}を設定中 (Open)"
           fi
           
           if gh api repos/$REPO/issues/$PR_NUMBER -X PATCH -f milestone=$MILESTONE_NUMBER > /dev/null 2>&1; then
@@ -204,8 +223,8 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          MILESTONE_NUMBER=1
-          echo "マイルストーン1を設定中 (Staging確認中)"
+          MILESTONE_NUMBER=${{ env.MILESTONE_VERIFICATION }}
+          echo "マイルストーン${MILESTONE_NUMBER}を設定中 (Staging確認中)"
           
           if gh api repos/$REPO/issues/$PR_NUMBER -X PATCH -f milestone=$MILESTONE_NUMBER > /dev/null 2>&1; then
             echo "✓ マイルストーン $MILESTONE_NUMBER をPR #$PR_NUMBER に追加しました"

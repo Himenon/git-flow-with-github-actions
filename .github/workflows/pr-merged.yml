@@ -4,6 +4,11 @@ on:
   pull_request:
     types: [closed]
 
+env:
+  # ラベル定義
+  LABEL_BEFORE_RELEASE: リリース前
+  LABEL_COMPLETED: completed
+
 concurrency:
   group: pr-merged-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -25,4 +30,4 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          gh pr edit $PR_NUMBER --repo $REPO --remove-label リリース前 --add-label completed 2>/dev/null || true
+          gh pr edit $PR_NUMBER --repo $REPO --remove-label "${{ env.LABEL_BEFORE_RELEASE }}" --add-label "${{ env.LABEL_COMPLETED }}" 2>/dev/null || true
