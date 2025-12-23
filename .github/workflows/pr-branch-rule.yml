@@ -9,7 +9,7 @@ name: PR / ブランチルール
 
 on:
   pull_request:
-    types: [opened]
+    # types: [opened]
 
 concurrency:
   group: pr-branch-rule-${{ github.event.pull_request.number }}
