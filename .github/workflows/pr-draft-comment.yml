@@ -11,13 +11,13 @@ jobs:
       pull-requests: write
     
     steps:
-      - name: Comment on PR
-        run: gh pr comment "$NUMBER" --body "$BODY"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          NUMBER: ${{ github.event.pull_request.number }}
-          BODY: "このPRはドラフトに変更されました。"
+      # - name: Comment on PR
+      #   run: gh pr comment "$NUMBER" --body "$BODY"
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     GH_REPO: ${{ github.repository }}
+      #     NUMBER: ${{ github.event.pull_request.number }}
+      #     BODY: "このPRはドラフトに変更されました。"
 
       - name: Set status to Todo
         env:
