@@ -37,10 +37,20 @@ jobs:
       issues: write
       
     steps:
-      - name: Remove milestone and labels
+      - name: Remove all labels, projects and milestone
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          gh pr edit $PR_NUMBER --repo $REPO --milestone "" --remove-label リリース前,completed || true
+          # すべてのラベルを取得して削除
+          LABELS=$(gh pr view $PR_NUMBER --repo $REPO --json labels --jq -r '.labels[].name' | paste -sd,)
+          [ -n "$LABELS" ] && gh pr edit $PR_NUMBER --repo $REPO --remove-label "$LABELS" || true
+          
+          # マイルストーンを削除
+          gh pr edit $PR_NUMBER --repo $REPO --milestone "" || true
+          
+          # すべてのプロジェクトから削除
+          gh api graphql -f query='query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){projectItems(first:10){nodes{id}}}}}' \
+            -f owner="${REPO%/*}" -f repo="${REPO#*/}" -F number=$PR_NUMBER --jq -r '.data.repository.pullRequest.projectItems.nodes[].id' | \
+            xargs -I {} gh api graphql -f query='mutation($itemId:ID!){deleteProjectV2Item(input:{itemId:$itemId}){deletedItemId}}' -f itemId={} 2>/dev/null || true
