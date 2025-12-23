@@ -2,7 +2,7 @@ name: PR / feature → develop
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, review_requested]
     branches:
       - 'develop/**'
   pull_request_review:
@@ -24,7 +24,7 @@ jobs:
       pull-requests: write
       
     steps:
-      - name: Post initial comment
+      - name: 初期コメントを投稿
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -34,6 +34,37 @@ jobs:
 
           * セルフレビューをしておきましょう。
           * PRでスコープ外のことをしないように気をつけましょう。"
+
+  delete-approved-comment-on-rerequest:
+    name: レビュー再要求時に承認コメント削除
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'review_requested' &&
+      startsWith(github.event.pull_request.head.ref, 'feature/')
+    runs-on: ubuntu-slim
+    permissions:
+      pull-requests: write
+      
+    steps:
+      - name: 承認通知コメントを削除
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          COMMENT_MARKER: "<!-- all-approved-notification -->"
+        run: |
+          # 承認通知コメントを検索して削除
+          COMMENTS=$(gh api repos/$REPO/issues/$PR_NUMBER/comments --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$COMMENT_MARKER\"))) | .id")
+          
+          if [ -n "$COMMENTS" ]; then
+            echo "$COMMENTS" | while read -r COMMENT_ID; do
+              echo "Deleting comment: $COMMENT_ID"
+              gh api -X DELETE repos/$REPO/issues/comments/$COMMENT_ID
+            done
+            echo "Deleted approval notification comments due to review re-request"
+          else
+            echo "No approval notification comments to delete"
+          fi
 
   check-all-approved:
     name: 全Approve後の通知コメント
@@ -46,7 +77,7 @@ jobs:
       pull-requests: write
       
     steps:
-      - name: Check if all reviews are approved
+      - name: 全レビューが承認されたか確認
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
