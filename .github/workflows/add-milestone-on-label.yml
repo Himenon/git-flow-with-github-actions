@@ -1,4 +1,4 @@
-name: Add Milestone on Production Label
+name: Add Milestone on リリース前 Label
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   add-milestone:
-    if: github.event.label.name == 'production'
+    if: github.event.label.name == 'リリース前'
     runs-on: ubuntu-latest
     permissions:
       contents: read
