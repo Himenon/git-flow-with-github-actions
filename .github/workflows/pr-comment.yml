@@ -20,3 +20,23 @@ jobs:
           BODY: >
             PRをオープンしていただきありがとうございます!
             セルフレビューをしておきましょう。
+  
+  develop-branch-warning:
+    runs-on: ubuntu-slim
+    permissions:
+      pull-requests: write
+    if: startsWith(github.event.pull_request.base.ref, 'develop/')
+    
+    steps:
+      - name: Comment on develop branch PR
+        run: gh pr comment "$NUMBER" --body "$BODY"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          BODY: >
+            ⚠️ **注意**
+            
+            `develop/*` ブランチに対して直接commitすることは避けてください。
+            
+            変更を行う際は、featureブランチを作成してそこからPull Requestを投げるようにお願いします。
