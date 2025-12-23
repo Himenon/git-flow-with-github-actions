@@ -1,0 +1,133 @@
+# Pull Requestのブランチルール管理
+# 許可されるPRのパターン:
+# - develop/* -> main, release/staging
+# - feature/* -> develop/*
+# - hotfix/* -> main, release/staging
+# それ以外のパターンは警告を出す
+
+name: PR / ブランチルール
+
+on:
+  pull_request:
+    types: [opened]
+
+concurrency:
+  group: pr-branch-rule-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check-branch-rule:
+    name: ブランチルールのチェック
+    runs-on: ubuntu-slim
+    permissions:
+      pull-requests: write
+    
+    steps:
+      - name: ブランチの組み合わせをチェック
+        id: check
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          echo "Checking branch combination:"
+          echo "  Head: $HEAD_REF"
+          echo "  Base: $BASE_REF"
+          
+          VALID=false
+          
+          # develop/* -> main, release/staging
+          if [[ "$HEAD_REF" == develop/* ]]; then
+            if [[ "$BASE_REF" == "main" ]] || [[ "$BASE_REF" == "release/staging" ]]; then
+              VALID=true
+              echo "✓ Valid: develop/* -> main or release/staging"
+            fi
+          fi
+          
+          # feature/* -> develop/*
+          if [[ "$HEAD_REF" == feature/* ]]; then
+            if [[ "$BASE_REF" == develop/* ]]; then
+              VALID=true
+              echo "✓ Valid: feature/* -> develop/*"
+            fi
+          fi
+          
+          # hotfix/* -> main, release/staging
+          if [[ "$HEAD_REF" == hotfix/* ]]; then
+            if [[ "$BASE_REF" == "main" ]] || [[ "$BASE_REF" == "release/staging" ]]; then
+              VALID=true
+              echo "✓ Valid: hotfix/* -> main or release/staging"
+            fi
+          fi
+          
+          if [ "$VALID" = true ]; then
+            echo "valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "valid=false" >> $GITHUB_OUTPUT
+            echo "✗ Invalid branch combination"
+          fi
+      
+      - name: 警告コメントを削除（ルールが正しい場合）
+        if: steps.check.outputs.valid == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # 既存の警告コメントがあれば削除
+          COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
+            --jq '.[] | select(.body | contains("<!-- branch-rule-warning -->")) | .id' \
+            | head -n 1)
+          
+          if [ -n "$COMMENT_ID" ]; then
+            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X DELETE
+            echo "Deleted warning comment #$COMMENT_ID"
+          else
+            echo "No warning comment found"
+          fi
+      
+      - name: 警告コメントを投稿（ルール違反の場合）
+        if: steps.check.outputs.valid == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BODY: |
+            > [!WARNING]
+            > ⚠️ **ブランチルール違反**
+            > 
+            > このPRのブランチの組み合わせは許可されていません。
+            
+            **現在の設定:**
+            - Head: `${{ github.event.pull_request.head.ref }}`
+            - Base: `${{ github.event.pull_request.base.ref }}`
+            
+            **許可されるパターン:**
+            - `develop/*` → `main` または `release/staging`
+            - `feature/*` → `develop/*`
+            - `hotfix/*` → `main` または `release/staging`
+            
+            **推奨される対応:**
+            1. このPRを閉じる
+            2. 適切なブランチに向けて新しいPRを作成する
+            
+            または、GitHub上でBase branchを変更することもできます。
+            <!-- branch-rule-warning -->
+        run: |
+          echo "Posting warning comment"
+          
+          # 既存のコメントを検索（マーカーで識別）
+          COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
+            --jq '.[] | select(.body | contains("<!-- branch-rule-warning -->")) | .id' \
+            | head -n 1)
+          
+          if [ -n "$COMMENT_ID" ]; then
+            # 既存のコメントを更新
+            gh api repos/$GH_REPO/issues/comments/$COMMENT_ID -X PATCH -f body="$BODY"
+            echo "Updated existing warning comment #$COMMENT_ID"
+          else
+            # 新規コメントを作成
+            gh pr comment "$NUMBER" --body "$BODY"
+            echo "Created new warning comment"
+          fi
