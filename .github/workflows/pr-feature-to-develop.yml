@@ -30,7 +30,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
-          gh pr comment $PR_NUMBER --repo $REPO --body "## レビューの前に確認してください
+          gh pr comment $PR_NUMBER --repo $REPO --body "## レビュー依頼の前に確認してください
 
           * セルフレビューをしておきましょう。
           * PRでスコープ外のことをしないように気をつけましょう。"
