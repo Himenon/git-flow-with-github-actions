@@ -1,4 +1,4 @@
-name: PR Closed Actions
+name: クローズ後の処理
 
 on:
   pull_request:
@@ -9,26 +9,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # マージ時のラベル更新
-  update-labels-on-merge:
-    if: github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-      
-    steps:
-      - name: Update labels
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
-        run: |
-          gh pr edit $PR_NUMBER --repo $REPO --remove-label リリース前 --add-label completed || true
-
-  # クローズ時のクリーンアップ（マージされていない場合）
   cleanup-on-close:
+    name: クローズ時のクリーンアップ
     if: github.event.pull_request.merged == false
     runs-on: ubuntu-latest
     permissions:
@@ -37,7 +19,7 @@ jobs:
       issues: write
       
     steps:
-      - name: Remove all labels, projects and milestone
+      - name: Label, Projects, Milestoneの削除
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
