@@ -58,14 +58,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.pull_request.number }}
+          COMMENT_MARKER: "<!-- opened-pr-comment -->"
           BODY: |
             PRをオープンしていただきありがとうございます!
             セルフレビューをしておきましょう。
-            <!-- opened-pr-comment -->
         run: |
+          # コメント本文にマーカーを結合）
+          BODY="${BODY}"$'\n'"${COMMENT_MARKER}"
+          
           # 既存のコメントを検索（マーカーで識別）
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
-            --jq '.[] | select(.body | contains("<!-- opened-pr-comment -->")) | .id' \
+            --jq ".[] | select(.body | contains(\"$COMMENT_MARKER\")) | .id" \
             2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then
@@ -188,13 +191,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           NUMBER: ${{ github.event.pull_request.number }}
+          COMMENT_MARKER: "<!-- draft-comment -->"
           BODY: |
             このPRはドラフトに変更されました。
-            <!-- draft-comment -->
         run: |
+          # コメント本文にマーカーを結合
+          BODY="${BODY}（前に改行を挿入）
+          BODY="${BODY}"$'\n'"          
           # 既存のコメントを検索（マーカーで識別）
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
-            --jq '.[] | select(.body | contains("<!-- draft-comment -->")) | .id' \
+            --jq ".[] | select(.body | contains(\"$COMMENT_MARKER\")) | .id" \
             2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then

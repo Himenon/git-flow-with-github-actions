@@ -22,6 +22,9 @@ jobs:
     permissions:
       pull-requests: write
     
+    env:
+      COMMENT_MARKER: "<!-- branch-name-rule-warning -->"
+    
     steps:
       - name: ブランチの組み合わせをチェック
         id: check
@@ -56,7 +59,7 @@ jobs:
         run: |
           # 既存の警告コメントがあれば削除
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
-            --jq '.[] | select(.body | contains("<!-- branch-name-rule-warning -->")) | .id' \
+            --jq ".[] | select(.body | contains(\"$COMMENT_MARKER\")) | .id" \
             2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then
@@ -94,13 +97,15 @@ jobs:
             2. 適切なブランチに向けて新しいPRを作成する
             
             または、GitHub上でBase branchを変更することもできます。
-            <!-- branch-name-rule-warning -->
         run: |
           echo "警告コメントを投稿中"
           
+          # コメント本文にマーカーを結合
+          BODY="${BODY}"$'\n'"${COMMENT_MARKER}"
+          
           # 既存のコメントを検索（マーカーで識別）
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
-            --jq '.[] | select(.body | contains("<!-- branch-name-rule-warning -->")) | .id' \
+            --jq ".[] | select(.body | contains(\"$COMMENT_MARKER\")) | .id" \
             2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then

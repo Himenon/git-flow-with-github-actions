@@ -22,6 +22,9 @@ jobs:
     permissions:
       pull-requests: write
     
+    env:
+      COMMENT_MARKER: "<!-- pr-title-check-comment -->"
+    
     steps:
       - name: PRタイトルプレフィックスをチェック
         id: check
@@ -55,11 +58,13 @@ jobs:
             - `chore:` - ビルドプロセスやツールの変更
             
             例: `feat: ユーザー認証機能を追加`
-            <!-- pr-title-check-comment -->
         run: |
+          # コメント本文にマーカーを結合
+          BODY="${BODY}"$'\n'"${COMMENT_MARKER}"
+          
           # 既存のコメントを検索（マーカーで識別）
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
-            --jq '.[] | select(.body | contains("<!-- pr-title-check-comment -->")) | .id' \
+            --jq ".[] | select(.body | contains(\"$COMMENT_MARKER\")) | .id" \
             2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then
@@ -81,7 +86,7 @@ jobs:
         run: |
           # 既存のコメントを検索（マーカーで識別）
           COMMENT_ID=$(gh api repos/$GH_REPO/issues/$NUMBER/comments \
-            --jq '.[] | select(.body | contains("<!-- pr-title-check-comment -->")) | .id' \
+            --jq ".[] | select(.body | contains(\"$COMMENT_MARKER\")) | .id" \
             2>/dev/null | head -n 1)
           
           if [ -n "$COMMENT_ID" ]; then
